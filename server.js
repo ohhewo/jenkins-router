@@ -6,6 +6,12 @@ const axios = require('axios');
 const app = express();
 const port = 5000;
 
+// team data
+const teamData = {
+  'PRESTO': 'DATA & FINANCE',
+  'DTS': 'MAKET DATA'
+};
+
 app.use(cors());
 
 app.get('/jobs', async (req, res) => {
@@ -22,6 +28,7 @@ app.get('/jobs', async (req, res) => {
     const jobs = response.data.jobs.map(job => ({
       name: job.name,
       color: job.color,
+      team: teamData[job.name] || 'Unassigned', // Add team info
       lastBuild: job.lastBuild ? job.lastBuild.result : 'No builds',
       lastBuildDuration: job.lastBuild ? job.lastBuild.duration : 'N/A',
       lastSuccessfulBuild: job.lastSuccessfulBuild ? new Date(job.lastSuccessfulBuild.timestamp).toLocaleString() : 'N/A',
@@ -45,6 +52,33 @@ app.get('/jobs', async (req, res) => {
       console.error('Error message:', error.message);
       res.status(500).send(error.message);
     }
+  }
+});
+
+app.get('/historic-jobs', async (req, res) => {
+  try {
+    const response = await axios.get('http://localhost:8080/api/json?tree=jobs[name,builds[number,timestamp,result]]', {
+      auth: {
+        username: 'admin',
+        password: '113b327b1cca8dc4933b3c233ea9bf64a9'
+      }
+    });
+
+    const builds = [];
+    response.data.jobs.forEach(job => {
+      job.builds.forEach(build => {
+        builds.push({
+          name: job.name,
+          timestamp: build.timestamp,
+          result: build.result
+        });
+      });
+    });
+
+    res.json(builds);
+  } catch (error) {
+    console.error('Error fetching historic job data from Jenkins API:', error);
+    res.status(500).send(error.message);
   }
 });
 
